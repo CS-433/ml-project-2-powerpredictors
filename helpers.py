@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 
 def relnan(df, key):
+    """Giving the relative Nan values for a key in the dataframe df"""
     return df[key].isna().sum() / len(df[key])
 
 def LoadData(path):
