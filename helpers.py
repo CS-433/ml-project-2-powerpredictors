@@ -39,3 +39,28 @@ def LoadData(path):
     )
 
     return data
+
+def return_nan_sections(data, key):
+    """Returns the first and last index of the data frame where the values are nan
+    Args:
+        data: dataframe containing a column where there are nan values inside
+        key: string, the key of the column where there are nans
+    Returns:
+        nan_sections: nparray, contains first and last index where value is nan
+    """
+    nan_sections = []
+    nan_indices = data[key][data[key].isna()].index  # Get indices of NaN values
+    if len(nan_indices) > 0:  # Ensure there are NaN values to process
+        first_nan = nan_indices[0]  # Start of the first NaN section
+        temp = nan_indices[0]  # Temp to track contiguous indices
+
+        for n in nan_indices[1:]:  # Loop through remaining indices
+            if n - 1 != temp:  # Check if current index is not contiguous with the previous
+                nan_sections.append([first_nan, temp+1])  # Append the current section
+                first_nan = n  # Start a new section
+            temp = n  # Update temp to current index
+
+        # Add the last section
+        nan_sections.append([first_nan, temp])
+
+    return np.array(nan_sections)
