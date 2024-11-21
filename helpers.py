@@ -22,11 +22,19 @@ def LoadData(path):
     data[key_date] = pd.to_datetime(data[key_date])
 
     # Adding the corresponding columns
-    data['year'] = data['Unnamed: 0'].dt.year
-    data['month'] = data['Unnamed: 0'].dt.month
-    data['day'] = data['Unnamed: 0'].dt.day
+    data['year'] = data[key_date].dt.year
+    data['month'] = data[key_date].dt.month
+    data['day'] = data[key_date].dt.day
+    data['hour'] = data[key_date].dt.hour
 
     # Drop the irrelevant column
-    data.drop(key_date, axis=1)
+    data = data.drop(key_date, axis=1)
+
+    # Average over the hour to get rid of the minutes
+    data = (
+    data.groupby(['year', 'month', 'day', 'hour'])
+    .mean(numeric_only=True)  # Calculate the mean for each group
+    .reset_index()  # Reset the index to turn the grouped columns back into regular columns
+    )
 
     return data
