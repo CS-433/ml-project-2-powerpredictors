@@ -14,7 +14,7 @@ def LoadData(path):
     """
 
     # Loading data
-    data = pd.read_csv(r'C:\Users\Max Tost\Desktop\Notebooks\PowerPrediction\ml-project-2-powerpredictors\data\epfl_campus_demand.csv')
+    data = pd.read_csv(path)
 
     # Get key of column which contains the date
     key_date = data.keys()[0]
