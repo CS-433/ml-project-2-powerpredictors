@@ -1,5 +1,30 @@
 import pandas as pd
 import numpy as np
+import torch
+from torch.utils.data import Dataset
+
+class MultiTimeSeriesDataset(Dataset):
+    def __init__(self, dataset, seq_len=72): # 72 = 3*24 = hours in three days, since otherwise the RNN might have problems ..
+        """
+        Args:
+            datasets (list of numpy.ndarray): List of time series datasets, 
+                each of shape (n_hours, n_features).
+            seq_len (int): Length of the input sequence, which the LSTM will be able to see
+        """
+        self.data = []
+        assert dataset.shape[0] > seq_len
+        for i in range(dataset.shape[0] - seq_len):
+            # Create input-output pairs for each dataset
+            x = dataset[i:i + seq_len]
+            y = dataset[i + seq_len][4]
+            self.data.append((x, y))
+
+    def __len__(self):
+        return len(self.data)
+
+    def __getitem__(self, idx):
+        x, y = self.data[idx]
+        return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32).unsqueeze(0)
 
 def relnan(df, key):
     """Giving the relative Nan values for a key in the dataframe df"""
