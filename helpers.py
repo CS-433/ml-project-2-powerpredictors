@@ -5,6 +5,33 @@ def relnan(df, key):
     """Giving the relative Nan values for a key in the dataframe df"""
     return df[key].isna().sum() / len(df[key])
 
+def LoadTimestamps(path_timespamps):
+    timestamps = pd.read_csv(path_timestamps)
+
+    # Get key of column which contains the date
+    key_date = timestamps.keys()[0]
+
+    # Make sure they are in datetime format
+    key_date = timestamps.keys()[1]
+    timestamps[key_date] = pd.to_datetime(timestamps[key_date])
+
+    # Adding the corresponding columns
+    timestamps['year'] = timestamps[key_date].dt.year
+    timestamps['month'] = timestamps[key_date].dt.month
+    timestamps['day'] = timestamps[key_date].dt.day
+    timestamps['hour'] = timestamps[key_date].dt.hour
+
+    # Drop the irrelevant column
+    timestamps = timestamps.drop(key_date, axis=1)
+
+    # Key for unnamed column
+    key_unnamed = timestamps.keys()[0]
+    timestamps = timestamps.drop(key_unnamed, axis=1) # Dropt it like its hot!
+     
+    return timestamps
+
+
+
 def LoadData(path):
     """Loading the data and adding seperate columns for year month and day
     Args:
