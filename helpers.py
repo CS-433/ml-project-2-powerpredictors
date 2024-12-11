@@ -26,10 +26,6 @@ def LoadTimestamps(path_timestamps):
 
     # Drop the irrelevant column
     timestamps = timestamps.drop(key_date, axis=1)
-
-    # Key for unnamed column
-    key_unnamed = timestamps.keys()[0]
-    timestamps = timestamps.drop(key_unnamed, axis=1) # Dropt it like its hot!
      
     return timestamps
 
