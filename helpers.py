@@ -26,8 +26,26 @@ def LoadTimestamps(path_timestamps):
 
     # Drop the irrelevant column
     timestamps = timestamps.drop(key_date, axis=1)
-     
+
     return timestamps
+
+def shift_dataframe_column(df, key, shift):
+    """Modify the dataframe in place. The values of the specified 
+    key are shifted down for shift > 0 and up for shift <0
+    Args:
+        df: (pd.DataFrame); The dataframe to be modified
+        key: (String); The key of the column
+        shift: (int); Shift amount and direction
+    """
+    
+    df[key] = df[key].shift(shift)
+    print(df[shift-2:shift+2])
+    df = df.dropna(subset=[key]).reset_index(drop=True)
+    data = torch.from_numpy(df.to_numpy()) # Convert to torch tensor
+    print('_'*80)
+    print(f'In this dataset, the power consumption is now shifted in the future by {shift} days,\nto let the network see the values that are predicted by the forecast')
+    print('_'*80)
+    return data
 
 
 
