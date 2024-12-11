@@ -5,7 +5,10 @@ def relnan(df, key):
     """Giving the relative Nan values for a key in the dataframe df"""
     return df[key].isna().sum() / len(df[key])
 
-def LoadTimestamps(path_timespamps):
+def LoadTimestamps(path_timestamps):
+    """
+    Loading the prepared timestamps.csv data to use merge them with the rest of the data.
+    """
     timestamps = pd.read_csv(path_timestamps)
 
     # Get key of column which contains the date
