@@ -66,7 +66,7 @@ def shift_dataframe_column(df, key, shift):
     data = torch.from_numpy(df.to_numpy()) # Convert to torch tensor
     print('_'*80)
     print(f'In this dataset, the power consumption is now shifted in the future by {shift} days,\nto let the network see the values that are predicted by the forecast')
-    print('_'*80)
+    print('-'*80)
     return data
 
 
@@ -171,6 +171,33 @@ def train_lstm(model, criterion, optimizer, train_loader, val_loader, num_epochs
         # Print the current learning rate
         current_lr = scheduler.get_last_lr()[0]
         print(f"Epoch {epoch + 1}, Learning Rate: {current_lr:.6f}")
+
+def LoadData(path, look_ahead):
+    """
+    Loads data and shift the data in the dataframe (from the csv at the indicated path) by the amount of hours indicated in the future
+
+    Args:
+        path (String): Path to the data, including the normalizes power consumption values 
+        look_ahead: The number of hours that the power_consumption will be shifted in the future (for positive values, recommended, standard = 5) or to the past (doesnt make sense, dont to it)
+    Returns:
+        train_loader (Torch DataLoader): Dataloader containing the first 80% of the timeseries data
+        val_loader (Torch DataLoader): Containing the rest
+        data_tensor (Torch tensor): Containing all the data
+    """
+    data = pd.read_csv(path)
+    print(data[:3])
+    data_tensor = shift_dataframe_column(data, 'power_consumption', look_ahead)
+    print(data_tensor[0])
+
+    # Creating datasets
+    train_dataset = MultiTimeSeriesDataset(data_tensor[:int(0.8*len(data_tensor))]) # Using first 80% for training
+    val_dataset = MultiTimeSeriesDataset(data_tensor[int(0.8*len(data_tensor)):]) # Using last 20% for evaluation 
+
+    # DataLoader for batching
+    train_loader = DataLoader(train_dataset, batch_size=16, shuffle=True)
+    val_loader = DataLoader(val_dataset, batch_size=16, shuffle=True)
+
+    return train_loader, val_loader, data_tensor
 
 
 
