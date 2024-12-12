@@ -3,6 +3,8 @@ import numpy as np
 import torch
 import torch.nn as nn
 from torch.utils.data import Dataset, DataLoader
+import torch.optim as optim
+from torch.optim.lr_scheduler import CosineAnnealingLR
 
 class MultiTimeSeriesDataset(Dataset):
     def __init__(self, dataset, seq_len=72): # 72 = 3*24 = hours in three days, since otherwise the RNN might have problems ..
@@ -129,7 +131,15 @@ class LSTMModel(nn.Module):
 
         return out
     
-def train_lstm(model, criterion, optimizer, train_loader, val_loader, num_epochs, scheduler):
+def train_lstm(train_loader, val_loader, num_epochs, input_size, hidden_size, weight_decay, num_stacked_lstm_layers, dropout_probability, learning_rate):
+    """ In place training of the model"""
+    # Initialize model, loss function, and optimizer
+    model = LSTMModel(input_size=input_size, hidden_size=hidden_size, num_layers=num_stacked_lstm_layers, output_size=1, dropout_prob=dropout_probability)
+    criterion = torch.nn.MSELoss()
+    optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
+
+    # Initialize the cosine annealing scheduler
+    scheduler = CosineAnnealingLR(optimizer, T_max=num_epochs, eta_min=0.0001)
     # A single validation step before training
     model.eval()
     val_loss = 0.0
@@ -171,6 +181,8 @@ def train_lstm(model, criterion, optimizer, train_loader, val_loader, num_epochs
         # Print the current learning rate
         current_lr = scheduler.get_last_lr()[0]
         print(f"Epoch {epoch + 1}, Learning Rate: {current_lr:.6f}")
+
+    return model, val_loss
 
 def LoadData(path, look_ahead):
     """
