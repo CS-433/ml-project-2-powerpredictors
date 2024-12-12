@@ -70,5 +70,107 @@ def shift_dataframe_column(df, key, shift):
     return data
 
 
+class LSTMModel(nn.Module):
+    def __init__(self, input_size, hidden_size, num_layers, output_size, dropout_prob):
+        """
+        Initialize the LSTM-based regression model.
+
+        Args:
+            input_size (int): Number of input features (e.g., temperature, GHI, etc.).
+            hidden_size (int): Number of units in each LSTM layer.
+            num_layers (int): Number of stacked LSTM layers.
+            output_size (int): Number of output features (e.g., predicted demand, 1 for regression).
+            dropout_prob (float): Dropout probability to apply between LSTM layers and before the fully connected layer.
+        """
+        super(LSTMModel, self).__init__()
+
+        # LSTM Layer
+        # - Processes sequential data and learns temporal dependencies.
+        # - Supports multiple layers (num_layers) and applies dropout between layers.
+        self.lstm = nn.LSTM(
+            input_size=input_size, 
+            hidden_size=hidden_size, 
+            num_layers=num_layers,
+            dropout=dropout_prob,
+            batch_first=True,
+        )
+
+        # Fully Connected (Linear) Layer
+        # - Maps the LSTM's hidden state output to the desired output size.
+        self.fc = nn.Linear(hidden_size, output_size)
+
+        # Dropout Layer
+        # - Reduces overfitting by randomly zeroing some activations during training.
+        self.dropout = nn.Dropout(dropout_prob)
+
+    def forward(self, x):
+        """
+        Forward pass for the LSTM model.
+
+        Args:
+            x (torch.Tensor): Input tensor of shape (batch_size, seq_length, input_size).
+
+        Returns:
+            torch.Tensor: Output predictions of shape (batch_size, output_size).
+        """
+        # LSTM Layer
+        # - Returns the full sequence of hidden states and the final hidden/cell state tuple.
+        # - We ignore the hidden/cell state tuple here (h_n, c_n).
+        _ , (h_f, _) = self.lstm(x)
+
+        # Dropout Layer
+        # - Only uses the hidden state from the last time step for prediction.
+        # - Applies dropout to prevent overfitting.
+        out = self.dropout(h_f[-1])  # Only using the last hidden state, since they are passed forward between the lstms; Shape: (batch_size, hidden_size)
+
+        # Fully Connected Layer
+        # - Maps the LSTM's output to the desired output size (e.g., single regression output).
+        out = self.fc(out)  # Shape: (batch_size, output_size)
+
+        return out
+    
+def train_lstm(model, criterion, optimizer, train_loader, val_loader, num_epochs, scheduler):
+    # A single validation step before training
+    model.eval()
+    val_loss = 0.0
+    with torch.no_grad():
+        for x_val, y_val in val_loader:
+            val_output = model(x_val)
+            val_loss += criterion(val_output, y_val).item()
+    val_loss /= len(val_loader)
+    print(f"Before training, Validation Loss with random parameters: {val_loss:.4f}")
+
+    for epoch in range(num_epochs):
+        model.train()
+        for x, y in train_loader:
+            optimizer.zero_grad()
+
+            # Get output
+            output = model(x)
+
+            # Compute loss
+            loss = criterion(output, y)
+
+            # Backward pass and optimization
+            loss.backward()
+            optimizer.step()
+
+        # Step the scheduler at the end of the epoch
+        scheduler.step()
+
+        # Validation (optional)
+        model.eval()
+        val_loss = 0.0
+        with torch.no_grad():
+            for x_val, y_val in val_loader:
+                val_output = model(x_val)
+                val_loss += criterion(val_output, y_val).item()
+        val_loss /= len(val_loader)
+        print(f"Epoch {epoch + 1}, Validation Loss: {val_loss:.4f}")
+
+        # Print the current learning rate
+        current_lr = scheduler.get_last_lr()[0]
+        print(f"Epoch {epoch + 1}, Learning Rate: {current_lr:.6f}")
+
 
 
