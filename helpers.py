@@ -7,7 +7,7 @@ import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
 class MultiTimeSeriesDataset(Dataset):
-    def __init__(self, dataset, seq_len=72): # 72 = 3*24 = hours in three days, since otherwise the RNN might have problems ..
+    def __init__(self, dataset, seq_len=72): # 72 = 3*24 = hours in 3 days, since otherwise the RNN might have problems ..
         """
         Args:
             datasets (list of numpy.ndarray): List of time series datasets, 
