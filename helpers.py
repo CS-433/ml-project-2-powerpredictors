@@ -48,6 +48,7 @@ class MultiTimeSeriesDataset(Dataset):
                 x = torch.flatten(x)
                 xs.append(x)
             y = dataset[i+(seq_len+1)*24:i+(seq_len+2)*24][:, 4]
+            xs = np.array(xs)
             self.data.append((xs, y))
 
     def __len__(self):
