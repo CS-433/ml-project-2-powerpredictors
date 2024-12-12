@@ -30,7 +30,7 @@ from torch.optim.lr_scheduler import CosineAnnealingLR
 #         return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32).unsqueeze(0)
 
 class MultiTimeSeriesDataset(Dataset):
-    def __init__(self, dataset, seq_len=7): # 7 days should be predicted recursively
+    def __init__(self, dataset, seq_len=30): # 7 days should be predicted recursively
         """
         Args:
             datasets (list of numpy.ndarray): List of time series datasets, 
@@ -40,7 +40,7 @@ class MultiTimeSeriesDataset(Dataset):
         print('hi')
         self.data = []
         assert dataset.shape[0] > seq_len
-        for i in range(dataset.shape[0] - seq_len *24 + 24):
+        for i in range(dataset.shape[0] - (seq_len *24 + 48)):
             xs = []
             for n in range(seq_len):
                 # Create input-output pairs for each dataset
@@ -56,7 +56,7 @@ class MultiTimeSeriesDataset(Dataset):
 
     def __getitem__(self, idx):
         x, y = self.data[idx]
-        return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32).unsqueeze(0)
+        return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32)
 
 
 
@@ -165,7 +165,7 @@ class LSTMModel(nn.Module):
 def train_lstm(train_loader, val_loader, num_epochs, input_size, hidden_size, weight_decay, num_stacked_lstm_layers, dropout_probability, learning_rate):
     """ In place training of the model"""
     # Initialize model, loss function, and optimizer
-    model = LSTMModel(input_size=input_size, hidden_size=hidden_size, num_layers=num_stacked_lstm_layers, output_size=1, dropout_prob=dropout_probability)
+    model = LSTMModel(input_size=input_size, hidden_size=hidden_size, num_layers=num_stacked_lstm_layers, output_size=24, dropout_prob=dropout_probability)
     criterion = torch.nn.MSELoss()
     optimizer = optim.Adam(model.parameters(), lr=learning_rate, weight_decay=weight_decay)
 
