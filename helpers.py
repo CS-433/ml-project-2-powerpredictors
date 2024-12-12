@@ -6,21 +6,49 @@ from torch.utils.data import Dataset, DataLoader
 import torch.optim as optim
 from torch.optim.lr_scheduler import CosineAnnealingLR
 
+# class MultiTimeSeriesDataset(Dataset):
+#     def __init__(self, dataset, seq_len=72): # 72 = 3*24 = hours in 3 days, since otherwise the RNN might have problems ..
+#         """
+#         Args:
+#             datasets (list of numpy.ndarray): List of time series datasets, 
+#                 each of shape (n_hours, n_features).
+#             seq_len (int): Length of the input sequence, which the LSTM will be able to see
+#         """
+#         self.data = []
+#         assert dataset.shape[0] > seq_len
+#         for i in range(dataset.shape[0] - seq_len):
+#             # Create input-output pairs for each dataset
+#             x = dataset[i:i + seq_len]
+#             y = dataset[i + seq_len][4]
+#             self.data.append((x, y))
+
+#     def __len__(self):
+#         return len(self.data)
+
+#     def __getitem__(self, idx):
+#         x, y = self.data[idx]
+#         return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32).unsqueeze(0)
+
 class MultiTimeSeriesDataset(Dataset):
-    def __init__(self, dataset, seq_len=72): # 72 = 3*24 = hours in 3 days, since otherwise the RNN might have problems ..
+    def __init__(self, dataset, seq_len=7): # 7 days should be predicted recursively
         """
         Args:
             datasets (list of numpy.ndarray): List of time series datasets, 
                 each of shape (n_hours, n_features).
             seq_len (int): Length of the input sequence, which the LSTM will be able to see
         """
+        print('hi')
         self.data = []
         assert dataset.shape[0] > seq_len
-        for i in range(dataset.shape[0] - seq_len):
-            # Create input-output pairs for each dataset
-            x = dataset[i:i + seq_len]
-            y = dataset[i + seq_len][4]
-            self.data.append((x, y))
+        for i in range(dataset.shape[0] - seq_len *24 + 24):
+            xs = []
+            for n in range(seq_len):
+                # Create input-output pairs for each dataset
+                x = dataset[(i + n * 24):(i + (n + 1) * 24)].detach().clone()
+                x = torch.flatten(x)
+                xs.append(x)
+            y = dataset[i+(seq_len+1)*24:i+(seq_len+2)*24][:, 4]
+            self.data.append((xs, y))
 
     def __len__(self):
         return len(self.data)
@@ -28,6 +56,8 @@ class MultiTimeSeriesDataset(Dataset):
     def __getitem__(self, idx):
         x, y = self.data[idx]
         return torch.tensor(x, dtype=torch.float32), torch.tensor(y, dtype=torch.float32).unsqueeze(0)
+
+
 
 def LoadTimestamps(path_timestamps):
     """
