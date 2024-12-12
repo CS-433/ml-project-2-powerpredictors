@@ -27,35 +27,23 @@ def day_ahead_forecast(forecast_np, prediction_timestamps):
     )
     return forecast_series
 
-def rolling_forecast(fitted_model, test, exog_test, forecast_horizon=24):
-    """
-    Generate rolling day-ahead forecasts and align them with timestamps.
-    Aligns predictions and computes the mean for overlapping forecasts.
-    """
-    # Dictionary to store all predictions for each time step
-    aligned_predictions = {t: [] for t in test.index}
+def forecast_mean(forecast_np, prediction_timestamps):
+    
+    num_samples, forecast_horizon = forecast_np.shape  
 
-    # Generate rolling forecasts
-    for i in range(0, len(test) - forecast_horizon + 1):  # Overlapping windows
-        # Forecast the next 24 hours
-        forecast = fitted_model.forecast(
-            steps=forecast_horizon,
-            exog=exog_test.iloc[i:i + forecast_horizon]
-        )
-        forecast_times = test.index[i:i + forecast_horizon]  # Get the corresponding times
+    aligned_matrix = np.full((num_samples, num_samples+forecast_horizon-1), np.nan)
+    for i in range(num_samples):  
+        aligned_matrix[i, i:i + forecast_horizon] = forecast_np[i] 
         
-        # Align each forecast with its timestamp
-        for t, pred in zip(forecast_times, forecast):
-            aligned_predictions[t].append(pred)
+    # Convert predictions and timestamps to a Pandas Series
+    forecast_series = pd.Series(
+        np.nanmean(aligned_matrix, axis=0),  # Flatten the list of forecasts
+        index=prediction_timestamps  # Align with timestamps
+    )
+    
+    return forecast_series
 
-    # Compute the mean of overlapping forecasts for each time step
-    aggregated_predictions = pd.Series({
-        t: np.mean(preds) for t, preds in aligned_predictions.items() if preds
-    })
-
-    return aggregated_predictions
-
-def prepare_tcn_features(df, target_col, exog_cols, window_length=168, forecast_horizon=24, include_forecast=True):
+def prepare_features(df, target_col, exog_cols, window_length=168, forecast_horizon=24, include_forecast=True):
     """
     Prepares the feature and target tensors for TCN with integrated forecasted features,
     filling missing values instead of dropping them.
