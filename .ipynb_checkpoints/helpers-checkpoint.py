@@ -9,7 +9,7 @@ import time
 import torch
 
 
-def prepare_features(df, target_col, exog_cols, window_length=168, forecast_horizon=24, include_forecast=True):
+def prepare_features(df, target_col, forecast_cols, window_length=168, forecast_horizon=24, include_forecast=True):
     """
     Prepares the feature and target tensors for TCN with integrated forecasted features,
     filling missing values instead of dropping them.
@@ -17,7 +17,7 @@ def prepare_features(df, target_col, exog_cols, window_length=168, forecast_hori
     Parameters:
         df (pd.DataFrame): Input DataFrame with historical data.
         target_col (str): Column name for power consumption (target variable).
-        exog_cols (list): List of column names for variables for which the forecast is known.
+        forecast_cols (list): List of column names for variables for which the forecast is known.
         window_length (int): Length of the historical temporal window (e.g., 168 for 7 days).
         forecast_horizon (int): Forecast horizon (e.g., 24 for next 24 hours).
 
@@ -30,7 +30,7 @@ def prepare_features(df, target_col, exog_cols, window_length=168, forecast_hori
 
     if include_forecast:
         # Add forecasted weather features
-        for col in exog_cols:
+        for col in forecast_cols:
             for h in range(1, forecast_horizon + 1):
                 df[f'{col}_forecast_{h}h'] = df[col].shift(-h)
     

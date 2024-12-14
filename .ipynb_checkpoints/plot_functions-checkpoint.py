@@ -6,19 +6,33 @@ from datetime import datetime
 import datetime
 from scipy import stats
 
-def plot_results(pred, act, title):
+def plot_data_distribution(df, columns, colors, suptitle, sharex_bool, is_violin):
+    fig, axes = plt.subplots(nrows=len(columns), ncols=1, figsize=(8, 5), sharex=sharex_bool)
+    if is_violin:
+        for i, feature in enumerate(columns):
+            sns.violinplot(
+                data=df,
+                x=feature,
+                ax=axes[i],
+                color=colors[i],  # Assign unique color from the palette
+                scale="width"  # Keep violin widths normalized
+            )
+            axes[i].set_xlabel("Value")
+            axes[i].set_ylabel(feature)
+    else:
+        for i, feature in enumerate(columns):
+            sns.boxplot(
+                data=df,
+                x=feature,
+                ax=axes[i],
+                color=colors[i]  # Assign unique color from the palette
+            )        
+            axes[i].set_xlabel("Value")
+            axes[i].set_ylabel(feature)
 
-    pred.index = pd.to_datetime(pred.index)
-    act.index = pd.to_datetime(act.index)
+    plt.suptitle(suptitle)
     
-    plt.figure(figsize=(12, 6))
-    plt.plot(act.index, act, label="True")
-    plt.plot(pred.index, pred, label="Predicted", linestyle="--")
-    plt.legend()
-    plt.title(title)
-    plt.xlabel("Time")
-    plt.ylabel("Power Consumption")
-    plt.grid()
+    plt.tight_layout()
     plt.show()
     
 def plot_results_by_month(pred, act, title, savename):
@@ -55,28 +69,6 @@ def plot_results_by_month(pred, act, title, savename):
     fig.suptitle(title, fontsize=16)
     fig.tight_layout(rect=[0, 0, 1, 0.97]) 
     plt.savefig(savename)
-    plt.show()
-
-
-def plot_results_with_uncertainty(mean_predictions, uncertainties, confidence_level, actuals, title):
-
-    time_steps = pd.to_datetime(mean_predictions.index)
-    
-    plt.figure(figsize=(12, 6))
-    plt.plot(time_steps, actuals, label="True", color="red")
-    plt.plot(time_steps, mean_predictions, label="Mean Prediction", color="blue")
-    plt.fill_between(
-        time_steps,
-        mean_predictions - confidence_level * uncertainties,
-        mean_predictions + confidence_level * uncertainties,
-        color="blue",
-        alpha=0.3,
-        label="95% Confidence Interval"
-    )
-    plt.title(title)
-    plt.xlabel("Time Step")
-    plt.ylabel("Power Consumption")
-    plt.legend()
     plt.show()
 
 def plot_results_with_uncertainty_by_month(mean_predictions, uncertainties, confidence_level, actuals, title, savename):
