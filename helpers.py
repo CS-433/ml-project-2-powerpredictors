@@ -6,42 +6,8 @@ import matplotlib.pyplot as plt
 import os 
 from datetime import datetime
 import time
+import torch
 
-
-def day_ahead_forecast(forecast_np, prediction_timestamps):
-    """
-    Generate direct day-ahead forecasts.
-    Predicts at time k the next k+24 hours and aligns predictions with test timestamps.
-    """
-    num_samples, forecast_horizon = forecast_np.shape  
-
-    forecast = []
-    # Loop through the test set in steps of 24 (non-overlapping)
-    for i in range(0, num_samples, forecast_horizon):
-        forecast.append(forecast_np[i])
-    
-    # Convert predictions and timestamps to a Pandas Series
-    forecast_series = pd.Series(
-        np.concatenate(forecast),  # Flatten the list of forecasts
-        index=prediction_timestamps  # Align with timestamps
-    )
-    return forecast_series
-
-def forecast_mean(forecast_np, prediction_timestamps):
-    
-    num_samples, forecast_horizon = forecast_np.shape  
-
-    aligned_matrix = np.full((num_samples, num_samples+forecast_horizon-1), np.nan)
-    for i in range(num_samples):  
-        aligned_matrix[i, i:i + forecast_horizon] = forecast_np[i] 
-        
-    # Convert predictions and timestamps to a Pandas Series
-    forecast_series = pd.Series(
-        np.nanmean(aligned_matrix, axis=0),  # Flatten the list of forecasts
-        index=prediction_timestamps  # Align with timestamps
-    )
-    
-    return forecast_series
 
 def prepare_features(df, target_col, exog_cols, window_length=168, forecast_horizon=24, include_forecast=True):
     """
@@ -89,10 +55,9 @@ def prepare_features(df, target_col, exog_cols, window_length=168, forecast_hori
 
     return np.array(X), np.array(y), pd.DatetimeIndex(timestamps)
 
-def compute_picp_pinaw(y_true, y_lower, y_upper):
+def picp(y_true, y_lower, y_upper):
     """
-    Computes PICP (Prediction Interval Coverage Probability) and 
-    PINAW (Prediction Interval Normalized Average Width).
+    Computes Prediction Interval Coverage Probability (PICP).
     
     Parameters:
         y_true (array-like): True values of the target variable.
@@ -100,20 +65,106 @@ def compute_picp_pinaw(y_true, y_lower, y_upper):
         y_upper (array-like): Upper bounds of the prediction intervals.
     
     Returns:
-        picp (float): Prediction Interval Coverage Probability.
-        pinaw (float): Prediction Interval Normalized Average Width.
+        float: Prediction Interval Coverage Probability.
     """
-    # Convert inputs to numpy arrays for easier manipulation
+    # Convert inputs to numpy arrays
     y_true = np.array(y_true)
     y_lower = np.array(y_lower)
     y_upper = np.array(y_upper)
     
-    # PICP: Proportion of true values within the bounds
+    # Proportion of true values within the bounds
     coverage = (y_true >= y_lower) & (y_true <= y_upper)  # Boolean array
     picp = np.mean(coverage)  # Average of the boolean array
     
-    # PINAW: Average width of intervals, normalized by the range of y_true
+    return picp
+
+
+def pinaw(y_true, y_lower, y_upper):
+    """
+    Computes Prediction Interval Normalized Average Width (PINAW).
+    
+    Parameters:
+        y_true (array-like): True values of the target variable.
+        y_lower (array-like): Lower bounds of the prediction intervals.
+        y_upper (array-like): Upper bounds of the prediction intervals.
+    
+    Returns:
+        float: Prediction Interval Normalized Average Width.
+    """
+    # Convert inputs to numpy arrays
+    y_true = np.array(y_true)
+    y_lower = np.array(y_lower)
+    y_upper = np.array(y_upper)
+    
+    # Average width of intervals, normalized by the range of y_true
     interval_widths = y_upper - y_lower
     pinaw = np.mean(interval_widths) / (np.max(y_true) - np.min(y_true))
     
-    return picp, pinaw
+    return pinaw
+
+
+def day_ahead_forecast(forecast_np, prediction_timestamps):
+    """
+    Generate direct day-ahead forecasts.
+    Predicts at time k the next k+24 hours and aligns predictions with test timestamps.
+    """
+    num_samples, forecast_horizon = forecast_np.shape  
+
+    forecast = []
+    # Loop through the test set in steps of 24 (non-overlapping)
+    for i in range(0, num_samples, forecast_horizon):
+        forecast.append(forecast_np[i])
+    
+    # Convert predictions and timestamps to a Pandas Series
+    forecast_series = pd.Series(
+        np.concatenate(forecast),  # Flatten the list of forecasts
+        index=prediction_timestamps  # Align with timestamps
+    )
+    return forecast_series
+
+    
+def extract_residuals(y_true, y_pred, prediction_timestamps, hours):
+
+    y_true_filtered = [] 
+    y_pred_filtered = []
+    residuals_filtered = []
+    
+    for hour in hours:
+        y_true_filtered_temp = (y_true[y_true.index.hour == hour]).to_numpy()
+        y_pred_filtered_temp = (y_pred[y_pred.index.hour == hour]).to_numpy()
+        y_true_filtered.append(y_true_filtered_temp)
+        y_pred_filtered.append(y_pred_filtered_temp)
+        residuals_filtered.append(y_true_filtered_temp-y_pred_filtered_temp)
+        
+    return pd.DataFrame(np.vstack(y_true_filtered), index = hours), pd.DataFrame(np.vstack(y_pred_filtered), index = hours), pd.DataFrame(np.vstack(residuals_filtered), index = hours)
+
+def time_align_predictions(y_pred, prediction_timestamps):
+    
+    num_samples, forecast_horizon = y_pred.shape  
+
+    aligned_pred = np.full((num_samples, num_samples+forecast_horizon-1), np.nan)
+    for i in range(num_samples):  
+        aligned_pred[i, i:i + forecast_horizon] = y_pred[i] 
+    
+    return pd.DataFrame(aligned_pred, columns = prediction_timestamps) 
+    
+def extract_all_residuals(y_true_all, y_pred_all, prediction_timestamps, hours):
+
+    y_true_all_aligned = time_align_predictions(y_true_all, prediction_timestamps)
+    y_true_all_aligned.columns = pd.to_datetime(y_true_all_aligned.columns)  
+    y_pred_all_aligned = time_align_predictions(y_pred_all, prediction_timestamps)
+    y_pred_all_aligned.columns = pd.to_datetime(y_pred_all_aligned.columns)  
+
+    y_true_all_filtered = []
+    y_pred_all_filtered = []
+    residuals_all_filtered = []
+    for hour in hours:
+        filtered_y_true_all_aligned = (y_true_all_aligned.loc[:, y_true_all_aligned.columns.hour == hour]).values.flatten()
+        filtered_y_pred_all_aligned = (y_pred_all_aligned.loc[:, y_pred_all_aligned.columns.hour == hour]).values.flatten()
+
+        y_true_all_filtered.append(filtered_y_true_all_aligned[~np.isnan(filtered_y_true_all_aligned)])
+        y_pred_all_filtered.append(filtered_y_pred_all_aligned[~np.isnan(filtered_y_pred_all_aligned)])
+        residuals_all_filtered.append(filtered_y_true_all_aligned[~np.isnan(filtered_y_true_all_aligned)]-filtered_y_pred_all_aligned[~np.isnan(filtered_y_pred_all_aligned)])
+        
+    return pd.DataFrame(np.vstack(y_true_all_filtered), index = hours), pd.DataFrame(np.vstack(y_pred_all_filtered), index = hours), pd.DataFrame(np.vstack(residuals_all_filtered), index = hours)
+
