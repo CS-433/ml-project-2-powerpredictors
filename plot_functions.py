@@ -221,6 +221,72 @@ def plot_residuals(residuals, y_pred, title, savename):
     plt.savefig(savename)
     plt.show()
 
+def plot_residuals_per_hour(hourly_residuals, hourly_predictions):
+    """
+    Plots 24 rows x 3 columns of residual analysis, one row per hour.
+    Shared X-axis for all subplots.
+
+    Parameters:
+        hourly_residuals (pd.DataFrame): DataFrame where each row contains residuals for an hour.
+        hourly_predictions (pd.DataFrame): DataFrame where each row contains predictions for an hour.
+    """
+    # Create a 24x3 grid of subplots
+    fig, axes = plt.subplots(nrows=24, ncols=3, figsize=(10, 60), sharex=True)
+
+    for hour in range(24):
+        residuals = hourly_residuals.iloc[hour].dropna().values
+        predictions = hourly_predictions.iloc[hour].dropna().values
+
+        # Residuals vs Predicted Values
+        axes[hour, 0].scatter(predictions, residuals, alpha=0.5)
+        axes[hour, 0].axhline(0, color='red', linestyle='--')
+        axes[hour, 0].set_title(f"Hour {hour+1}: Residuals vs Predicted")
+        axes[hour, 0].set_ylabel("Residuals")
+        if hour == 23:  # Add X-axis label only to the last row
+            axes[hour, 0].set_xlabel("Predicted Values")
+
+        # QQ Plot
+        stats.probplot(residuals.flatten(), dist="norm", plot=axes[hour, 1])
+        axes[hour, 1].set_title(f"Hour {hour+1}: QQ Plot")
+
+        # Histogram of Residuals
+        axes[hour, 2].hist(residuals.flatten(), bins=30, edgecolor='k', alpha=0.7)
+        axes[hour, 2].set_title(f"Hour {hour+1}: Histogram")
+        if hour == 23:  # Add X-axis label only to the last row
+            axes[hour, 2].set_xlabel("Residuals")
+
+    # Adjust layout to prevent overlap
+    plt.tight_layout()
+    plt.show()
+
+def plot_hourly_residuals_distribution(data, title, savename):
+    """
+    Plots 24 vertical boxplots, one for each hour, from the input DataFrame.
+
+    Parameters:
+        data (pd.DataFrame): A DataFrame where each row represents data for an hour.
+        title (str): The title of the plot.
+        savename (str): File name to save the plot.
+    """
+    if data.shape[0] != 24:
+        raise ValueError("Input DataFrame must have 24 rows, one for each hour.")
+
+    # Create the plot
+    plt.figure(figsize=(12, 6))
+    plt.boxplot(data.values.T, vert=True, patch_artist=True, showfliers=True)
+    
+    # Customize the plot
+    plt.title(title)
+    plt.xlabel("Hour of the Day [h]")
+    plt.ylabel("Residuals")
+    plt.xticks(ticks=np.arange(1, 25), labels=data.index if data.index is not None else np.arange(1, 25))
+    plt.grid(axis='y', linestyle='--', alpha=0.7)
+
+    # Show the plot
+    plt.tight_layout()
+    plt.savefig(savename)
+    plt.show()
+
 
 def plot_train_vs_validation_loss(epochs,train_losses, val_losses, savename):
     

@@ -123,48 +123,51 @@ def day_ahead_forecast(forecast_np, prediction_timestamps):
     return forecast_series
 
     
-def extract_residuals(y_true, y_pred, prediction_timestamps, hours):
 
-    y_true_filtered = [] 
-    y_pred_filtered = []
-    residuals_filtered = []
+def align_predictions_to_timestamps(predictions, timestamps):
+    """
+    Aligns predictions to their corresponding timestamps for time-based evaluation.
+
+    Parameters:
+        predictions (np.ndarray): Predicted values of shape (num_samples, forecast_horizon).
+        timestamps (pd.DatetimeIndex): Timestamps for the predictions.
+
+    Returns:
+        pd.DataFrame: A DataFrame where predictions are aligned with timestamps.
+    """
+    num_predictions, forecast_horizon = predictions.shape  # Get number of samples and forecast horizon
+
+    # Initialize an array to hold the aligned predictions with NaN padding
+    aligned_predictions = np.full((num_predictions, num_predictions + forecast_horizon - 1), np.nan)
+
+    # Align each prediction to its corresponding position in the timeline
+    for sample_idx in range(num_predictions):
+        aligned_predictions[sample_idx, sample_idx:sample_idx + forecast_horizon] = predictions[sample_idx]
+
+    # Convert to DataFrame with timestamps as column names
+    return pd.DataFrame(aligned_predictions, columns=timestamps)
     
-    for hour in hours:
-        y_true_filtered_temp = (y_true[y_true.index.hour == hour]).to_numpy()
-        y_pred_filtered_temp = (y_pred[y_pred.index.hour == hour]).to_numpy()
-        y_true_filtered.append(y_true_filtered_temp)
-        y_pred_filtered.append(y_pred_filtered_temp)
-        residuals_filtered.append(y_true_filtered_temp-y_pred_filtered_temp)
-        
-    return pd.DataFrame(np.vstack(y_true_filtered), index = hours), pd.DataFrame(np.vstack(y_pred_filtered), index = hours), pd.DataFrame(np.vstack(residuals_filtered), index = hours)
 
-def time_align_predictions(y_pred, prediction_timestamps):
-    
-    num_samples, forecast_horizon = y_pred.shape  
+def extract_hourly_data(predictions, prediction_timestamps):
+    """
+    Extract hourly data from aligned predictions.
 
-    aligned_pred = np.full((num_samples, num_samples+forecast_horizon-1), np.nan)
-    for i in range(num_samples):  
-        aligned_pred[i, i:i + forecast_horizon] = y_pred[i] 
-    
-    return pd.DataFrame(aligned_pred, columns = prediction_timestamps) 
-    
-def extract_all_residuals(y_true_all, y_pred_all, prediction_timestamps, hours):
+    Parameters:
+        predictions (pd.DataFrame): Prediction values.
+        prediction_timestamps (pd.DatetimeIndex): Timestamps for the predictions.
 
-    y_true_all_aligned = time_align_predictions(y_true_all, prediction_timestamps)
-    y_true_all_aligned.columns = pd.to_datetime(y_true_all_aligned.columns)  
-    y_pred_all_aligned = time_align_predictions(y_pred_all, prediction_timestamps)
-    y_pred_all_aligned.columns = pd.to_datetime(y_pred_all_aligned.columns)  
+    Returns:
+        pd.DataFrame: Filtered predictions for each hour.
+    """
+    # Align predictions with timestamps
+    aligned_predictions = align_predictions_to_timestamps(predictions, prediction_timestamps)
+    aligned_predictions.columns = pd.to_datetime(aligned_predictions.columns)  # Ensure columns are datetime
 
-    y_true_all_filtered = []
-    y_pred_all_filtered = []
-    residuals_all_filtered = []
-    for hour in hours:
-        filtered_y_true_all_aligned = (y_true_all_aligned.loc[:, y_true_all_aligned.columns.hour == hour]).values.flatten()
-        filtered_y_pred_all_aligned = (y_pred_all_aligned.loc[:, y_pred_all_aligned.columns.hour == hour]).values.flatten()
+    # Filter and organize predictions by hour
+    hourly_filtered_predictions = []
+    for hour in range(24):  
+        hourly_data = (aligned_predictions.loc[:, aligned_predictions.columns.hour == hour]).values.flatten()
+        hourly_filtered_predictions.append(hourly_data[~np.isnan(hourly_data)])  # Remove NaN values
 
-        y_true_all_filtered.append(filtered_y_true_all_aligned[~np.isnan(filtered_y_true_all_aligned)])
-        y_pred_all_filtered.append(filtered_y_pred_all_aligned[~np.isnan(filtered_y_pred_all_aligned)])
-        residuals_all_filtered.append(filtered_y_true_all_aligned[~np.isnan(filtered_y_true_all_aligned)]-filtered_y_pred_all_aligned[~np.isnan(filtered_y_pred_all_aligned)])
-        
-    return pd.DataFrame(np.vstack(y_true_all_filtered), index = hours), pd.DataFrame(np.vstack(y_pred_all_filtered), index = hours), pd.DataFrame(np.vstack(residuals_all_filtered), index = hours)
-
+    # Return as a DataFrame with hours as the index
+    return pd.DataFrame(np.vstack(hourly_filtered_predictions), index=range(24))
