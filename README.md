@@ -6,7 +6,7 @@ This repository contains the implementation of models and methods for day-ahead 
 
 ### **Folders**
 - **`data/`**: Contains raw data used for the project.
-- **`data_augmented/`**: Contains cleaned and pre-processed data sets with additional engineered features.
+- **`data_expanded/`**: Contains cleaned and pre-processed data sets with additional engineered features.
 - **`results/`**: Stores results and plots generated during the model evaluation.
 
 ### **Notebooks**
@@ -14,7 +14,7 @@ This repository contains the implementation of models and methods for day-ahead 
 2. **`data_preprocessing.ipynb`**: Focuses on preparing the data for use in machine learning models (e.g., train-test splitting, standardization and one-hot encoding, data structuring).
 3. **`benchmark.ipynb`**: Implements and evaluates benchmark models, namely SARIMA and Persistence Forecast models.
 4. **`LSTM.ipynb`**: Implements and trains an LSTM model for power consumption forecasting.
-5. **`TCN.ipynb`**: Implements and trains the TCN model for power consumption forecasting.
+5. **`TCN.ipynb`**: Implements and trains the TCN model for power consumption forecasting. This is not commented in the project report. 
 6. **`results.ipynb`**: Summarizes and visualizes results from the various models, including comparison metrics and plots.
 
 ### **Python Scripts**
